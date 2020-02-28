@@ -8,19 +8,19 @@ import json
 class ImportScript(object):
     """
     # Automate Import script creation
-    
+
     ## Workflow
-    
+
     * CSV uploaded and trigger creates an issue on github.
     * Run a command locally that takes a gss code as an argument e.g. `python manage.py generate_import E07000092`:
         - Get the most recent `report.json` from the data directory
         - if there is no local branch then create one.
         - create a commit which contains an attempt to update the script
-    
+
     ## ImportScript class
-    
+
     Class to represent an import script.
-    
+
     Import scripts have a few distinct sections which determine the sort of data the class should hold.
     * Imports
     * Properties
@@ -34,7 +34,7 @@ class ImportScript(object):
         - district_record_to_dict
         - address_record_to_dict
         - station_record_to_dict
-    
+
     There are also a few things that will be helpful to know about (which are usefully in the report):
     * Report (where the report is to get most of the below)
     * Github issue (to make the commit message)
@@ -194,7 +194,7 @@ class ImportScript(object):
                     if self.files["addresses_name"].endswith("tsv"):
                         delim = "\\t"
                     else:
-                        delim = ", "
+                        delim = ","
                     line = f'    csv_delimiter = "{delim}"\n'
                 # Comment out everything else
                 elif line != "\n" and "council_id" not in line:
