@@ -37,17 +37,6 @@ class Command(BaseCommand):
             files = [f"{script.council_data_path}/{v}" for v in script.files.values()]
             subprocess.Popen(["libreoffice"] + files)
 
-        if options["commit"]:
-            print("committing a new script")
-            # Add the script
-            subprocess.run(f"git add {script.command_path}", shell=True)
-            # Commit
-            gh_issue_number = script.github_issue.split("/")[-1]
-            subprocess.run(
-                f'git commit -m "Import script for {script.short_name} (closes #{gh_issue_number})"',
-                shell=True,
-            )
-
         if options["run"]:
             # Run script
             print("running the new script")
@@ -82,6 +71,17 @@ class Command(BaseCommand):
                     f"git grep --line-number -C 5 '{script.council_id}' 1977a6 890908 972106 2cf506e -- "
                     "polling_stations/apps/data_collection/management/commands/misc_fixes.py"
                 ),
+                shell=True,
+            )
+
+        if options["commit"]:
+            print("committing a new script")
+            # Add the script
+            subprocess.run(f"git add {script.command_path}", shell=True)
+            # Commit
+            gh_issue_number = script.github_issue.split("/")[-1]
+            subprocess.run(
+                f'git commit -m "Import script for {script.short_name} (closes #{gh_issue_number})"',
                 shell=True,
             )
 
