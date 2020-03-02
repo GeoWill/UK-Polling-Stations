@@ -51,13 +51,14 @@ class ImportScript(object):
           script with a 'warning.txt' file present. This probably means that the ImportScript class should be able to
           parse such a file.
     * Doesn't handle democracy counts at all.
+    * There should be an option in instantiate from a script, then perhaps an 'update method' so that we can get the old script and the new script.
     """
 
     def __init__(self, council_id):
         self.council_id = council_id
         self._report = ""
         self._command_path = ""
-        self.elections = ["local.2020-05-07"]
+        self.elections = ["2020-05-07"]
         self.files = self.get_files()
         self.methods = {
             "district_record_to_dict": [],
