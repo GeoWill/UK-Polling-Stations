@@ -9,6 +9,9 @@ class Command(BaseCommand):
             "gss_code", help="The council gss code to generate an import script for."
         )
         parser.add_argument(
+            "-w", "--write", action="store_true", help="Write a new script"
+        )
+        parser.add_argument(
             "-r",
             "--run",
             action="store_true",
@@ -28,8 +31,29 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         script = ImportScript(options["gss_code"])
 
-        print("writing a new script...")
-        script.write_script()
+        if options["write"]:
+            print("writing a new script...")
+            script.write_script()
+
+            # Open dashboard TODO Use webrowser module
+            subprocess.run(
+                f"firefox http://127.0.0.1:8000/dashboard/council/{script.council_id}/",
+                shell=True,
+            )
+
+            # Open script in Sublime - TODO change to default editor
+            subprocess.Popen(["subl", script.command_path])
+
+            print("git grep-ing misc fixes")
+            # Search misc fixes
+            # Commit hashes are for commits just before misc fixes are deleted, or the last commit to add any.
+            subprocess.run(
+                (
+                    f"git grep --line-number -C 5 '{script.council_id}' 1977a6 890908 972106 2cf506e -- "
+                    "polling_stations/apps/data_collection/management/commands/misc_fixes.py"
+                ),
+                shell=True,
+            )
 
         if options["libre"]:
             print("Opening files in librecalc")
@@ -50,26 +74,6 @@ class Command(BaseCommand):
                 (
                     "psql -d polling_stations -U dc -c "
                     "'REFRESH MATERIALIZED VIEW pollingstations_lines_view;'"
-                ),
-                shell=True,
-            )
-
-            # Open dashboard TODO Use webrowser module
-            subprocess.run(
-                f"firefox http://127.0.0.1:8000/dashboard/council/{script.council_id}/",
-                shell=True,
-            )
-
-            # Open script in Sublime - TODO change to default editor
-            subprocess.Popen(["subl", script.command_path])
-
-            print("git grep-ing misc fixes")
-            # Search misc fixes
-            # Commit hashes are for commits just before misc fixes are deleted, or the last commit to add any.
-            subprocess.run(
-                (
-                    f"git grep --line-number -C 5 '{script.council_id}' 1977a6 890908 972106 2cf506e -- "
-                    "polling_stations/apps/data_collection/management/commands/misc_fixes.py"
                 ),
                 shell=True,
             )
