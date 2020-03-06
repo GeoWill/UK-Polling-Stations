@@ -1,6 +1,8 @@
 from data_collection.import_script import ImportScript
 from django.core.management.base import BaseCommand
 import subprocess
+from pathlib import Path
+import re
 
 
 class Command(BaseCommand):
@@ -25,7 +27,17 @@ class Command(BaseCommand):
         )
 
         parser.add_argument(
-            "-l", "--libre", action="store_true", help="Open files in libreoffice",
+            "-i",
+            "--inspect",
+            action="store_true",
+            help="Open files in libreoffice, script and dashboard",
+        )
+
+        parser.add_argument(
+            "-u",
+            "--fix-uprns",
+            action="store_true",
+            help="Uncomment lines containing uprns which are in the new warnings file",
         )
 
     def handle(self, *args, **options):
@@ -35,6 +47,12 @@ class Command(BaseCommand):
             print("writing a new script...")
             script.write_script()
 
+        if options["inspect"]:
+            print("Opening files in librecalc")
+            print(list(script.files.values()))
+            files = [f"{script.council_data_path}/{v}" for v in script.files.values()]
+            subprocess.Popen(["libreoffice"] + files)
+
             # Open dashboard TODO Use webrowser module
             subprocess.run(
                 f"firefox http://127.0.0.1:8000/dashboard/council/{script.council_id}/",
@@ -43,23 +61,6 @@ class Command(BaseCommand):
 
             # Open script in Sublime - TODO change to default editor
             subprocess.Popen(["subl", script.command_path])
-
-            print("git grep-ing misc fixes")
-            # Search misc fixes
-            # Commit hashes are for commits just before misc fixes are deleted, or the last commit to add any.
-            subprocess.run(
-                (
-                    f"git grep --line-number -C 5 '{script.council_id}' 1977a6 890908 972106 2cf506e -- "
-                    "polling_stations/apps/data_collection/management/commands/misc_fixes.py"
-                ),
-                shell=True,
-            )
-
-        if options["libre"]:
-            print("Opening files in librecalc")
-            print(list(script.files.values()))
-            files = [f"{script.council_data_path}/{v}" for v in script.files.values()]
-            subprocess.Popen(["libreoffice"] + files)
 
         if options["run"]:
             # Run script
@@ -78,6 +79,17 @@ class Command(BaseCommand):
                 shell=True,
             )
 
+            print("git grep-ing misc fixes")
+            # Search misc fixes
+            # Commit hashes are for commits just before misc fixes are deleted, or the last commit to add any.
+            subprocess.run(
+                (
+                    f"git grep --line-number -C 5 '{script.council_id}' 1977a6 890908 972106 2cf506e -- "
+                    "polling_stations/apps/data_collection/management/commands/misc_fixes.py"
+                ),
+                shell=True,
+            )
+
         if options["commit"]:
             print("committing a new script")
             # Add the script
@@ -88,6 +100,27 @@ class Command(BaseCommand):
                 f'git commit -m "Import script for {script.short_name} (closes #{gh_issue_number})"',
                 shell=True,
             )
+
+        if options["fix_uprns"]:
+            print("Fixing uprns...")
+
+            script.command_path.rename(f"{script.command_path}.old")
+
+            warnings = (Path().cwd() / "warning.txt").open("r").read()
+            warning_uprns = [
+                x.group().strip('"') for x in re.finditer(r'"[0-9]*"', warnings)
+            ]
+
+            with Path(f"{script.command_path}.old").open(
+                "r"
+            ) as old_script, script.command_path.open("w") as new_script:
+                for line in old_script.readlines():
+                    if any(u in line for u in warning_uprns) and line.startswith("#"):
+                        line = line[1:]
+
+                    new_script.write(line)
+
+            Path(f"{script.command_path}.old").unlink()
 
         print(
             f"./manage.py teardown --all && ./manage.py {script.command_path.stem} -p 2>&1 | tee warning.txt"
