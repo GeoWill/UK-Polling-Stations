@@ -159,6 +159,7 @@ PROJECT_APPS = (
     "councils",
     "data_collection",
     "data_finder",
+    "data_importers",
     "dc_theme",
     "feedback",
     "file_uploads",
