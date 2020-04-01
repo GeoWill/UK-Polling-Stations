@@ -31,6 +31,7 @@ class UprnToCouncil(models.Model):
 
     uprn = models.CharField(primary_key=True, max_length=12)
     lad = models.CharField(blank=True, max_length=9)
+    polling_station_id = models.CharField(blank=True, max_length=255)
 
 
 class Blacklist(models.Model):
