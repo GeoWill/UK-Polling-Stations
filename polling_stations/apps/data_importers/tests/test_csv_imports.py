@@ -112,7 +112,30 @@ class ImporterTest(TestCase):
         self.assertEqual(set(imported_uprns), expected)
 
     def test_postcode_mismatch(self):
-        pass
+        """Uprn exists but postcodes don't match"""
+        test_params = {
+            "uprns": ["4", "7"],
+            "addressbase": [
+                {"address": "3 Factory Rd, Poole", "uprn": "4", "postcode": "BH16 5HT"},
+                {
+                    "address": "4 Factory Rd, Poole",
+                    "uprn": "7",
+                    "postcode": "BH16 5HT",  # postcode is 'BH17 5HT' in csv
+                },
+            ],
+            "addresses_name": "uprn_missing.csv",
+        }
+        self.set_up(**test_params)
+
+        imported_uprns = (
+            UprnToCouncil.objects.filter(lad="X01000000")
+            .exclude(polling_station_id="")
+            .order_by("uprn")
+            .values_list("uprn", "polling_station_id")
+        )
+        self.assertEqual(1, len(imported_uprns))
+        expected = {("4", "1")}
+        self.assertEqual(set(imported_uprns), expected)
 
     def test_address_import(self):
         test_params = {
