@@ -24,7 +24,38 @@ class ImporterTest(TestCase):
         cmd.handle(**self.opts)
 
     def test_duplicate_uprns(self):
-        pass
+        """
+        In the csv there are two matching uprns with different polling station ids.
+        Despite one appearing in addressbase, neither should be imported.
+        """
+        test_params = {
+            "uprns": ["1", "2", "6"],
+            "addressbase": [
+                {
+                    "address": "Another Haringey Park, London",
+                    "uprn": "1",
+                    "postcode": "N8 8NM",
+                },
+                {"address": "Haringey Park, London", "uprn": "2", "postcode": "N8 9JG"},
+                {
+                    "address": "80 Pine Vale Cres, Bournemouth",
+                    "uprn": "6",
+                    "postcode": "BH10 6BJ",
+                },
+            ],
+            "addresses_name": "duplicate_uprns.csv",
+        }
+        self.set_up(**test_params)
+
+        imported_uprns = (
+            UprnToCouncil.objects.filter(lad="X01000000")
+            .exclude(polling_station_id="")
+            .order_by("uprn")
+            .values_list("uprn", "polling_station_id")
+        )
+        self.assertEqual(1, len(imported_uprns))
+        expected = {("6", "2")}
+        self.assertEqual(set(imported_uprns), expected)
 
     def test_uprn_not_in_addressbase(self):
         pass
