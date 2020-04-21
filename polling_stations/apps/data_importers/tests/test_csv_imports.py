@@ -58,9 +58,11 @@ class ImporterTest(TestCase):
         self.assertEqual(set(imported_uprns), expected)
 
     def test_uprn_not_in_addressbase(self):
+        """uprn does not appear in addressbase data, or in UprnToCouncil table"""
         test_params = {
             "uprns": ["6"],
             "addressbase": [
+                {"address": "3 Factory Rd, Poole", "uprn": "4", "postcode": "BH16 5HT"},
                 {
                     "address": "80 Pine Vale Cres, Bournemouth",
                     "uprn": "6",
@@ -82,7 +84,32 @@ class ImporterTest(TestCase):
         self.assertEqual(set(imported_uprns), expected)
 
     def test_uprn_assigned_to_wrong_council(self):
-        pass
+        """Uprn exists but we've located it in a different council in UprnToCouncil table"""
+        test_params = {
+            "uprns": ["6"],
+            "addressbase": [
+                {"address": "3 Factory Rd, Poole", "uprn": "4", "postcode": "BH16 5HT"},
+                {
+                    "address": "80 Pine Vale Cres, Bournemouth",
+                    "uprn": "6",
+                    "postcode": "BH10 6BJ",
+                },
+            ],
+            "addresses_name": "uprn_missing.csv",
+        }
+        self.set_up(**test_params)
+
+        UprnToCouncil.objects.update_or_create(pk=4, lad="X02000000")
+
+        imported_uprns = (
+            UprnToCouncil.objects.filter(lad="X01000000")
+            .exclude(polling_station_id="")
+            .order_by("uprn")
+            .values_list("uprn", "polling_station_id")
+        )
+        self.assertEqual(1, len(imported_uprns))
+        expected = {("6", "2")}
+        self.assertEqual(set(imported_uprns), expected)
 
     def test_postcode_mismatch(self):
         pass
