@@ -6,6 +6,8 @@ import json
 import glob
 import logging
 import os
+import tempfile
+import urllib.request
 
 from django.apps import apps
 from django.contrib.gis import geos
@@ -658,3 +660,58 @@ class BaseCsvStationsKmlDistrictsImporter(BaseStationsDistrictsImporter, CsvMixi
             "name": record["Name"].value,
             "area": poly,
         }
+
+
+class BaseGenericApiImporter(BaseStationsDistrictsImporter):
+    srid = 4326
+    districts_srid = 4326
+
+    districts_name = None
+    districts_url = None
+
+    stations_name = None
+    stations_url = None
+
+    local_files = False
+
+    def import_data(self):
+
+        # Optional step for pre import tasks
+        try:
+            self.pre_import()
+        except NotImplementedError:
+            pass
+
+        self.districts = DistrictSet()
+        self.stations = StationSet()
+
+        # deal with 'stations only' or 'districts only' data
+        if self.districts_url is not None:
+            self.import_polling_districts()
+        if self.stations_url is not None:
+            self.import_polling_stations()
+
+        self.districts.save()
+        self.stations.save()
+
+        polling_station_to_uprn_lookup = self.districts.get_polling_station_lookup()
+        stations_lookup = self.stations.get_polling_station_lookup()
+
+        # We don't know whether stations or districts will have the other's id in
+        # their attributes. This lets us combine them even if it's a mix. At the moment
+        # there is no checking for any disagreements.
+        for station in stations_lookup:
+            if station not in polling_station_to_uprn_lookup:
+                polling_station_to_uprn_lookup[station] = stations_lookup[station]
+
+        self.districts.update_uprn_to_council_model(polling_station_to_uprn_lookup)
+
+    def get_districts(self):
+        with tempfile.NamedTemporaryFile() as tmp:
+            urllib.request.urlretrieve(self.districts_url, tmp.name)
+            return self.get_data(self.districts_filetype, tmp.name)
+
+    def get_stations(self):
+        with tempfile.NamedTemporaryFile() as tmp:
+            urllib.request.urlretrieve(self.stations_url, tmp.name)
+            return self.get_data(self.stations_filetype, tmp.name)
