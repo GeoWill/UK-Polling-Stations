@@ -157,7 +157,6 @@ PROJECT_APPS = (
     "addressbase",
     "api",
     "councils",
-    "data_collection",
     "data_finder",
     "data_importers",
     "dc_theme",
