@@ -7,13 +7,19 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('data_collection', '0009_auto_20160616_0921'),
+        ("data_collection", "0009_auto_20160616_0921"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='dataquality',
-            name='council',
-            field=models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, primary_key=True, related_name='legacy_data_quality', serialize=False, to='councils.Council'),
+            model_name="dataquality",
+            name="council",
+            field=models.OneToOneField(
+                on_delete=django.db.models.deletion.CASCADE,
+                primary_key=True,
+                related_name="legacy_data_quality",
+                serialize=False,
+                to="councils.Council",
+            ),
         ),
     ]

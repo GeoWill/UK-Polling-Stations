@@ -235,7 +235,7 @@ class AddressListTest(TestCase):
                 "uprn": "4",
             },
         ]
-        expected = {"01": {"1", "2", "3", }, "02": {"4"}}
+        expected = {"01": {"1", "2", "3",}, "02": {"4"}}
         address_list = AddressList(MockLogger())
         for el in in_list:
             address_list.append(el)

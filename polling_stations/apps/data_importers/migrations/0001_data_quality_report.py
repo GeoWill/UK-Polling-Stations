@@ -9,21 +9,27 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('councils', '0006_ec_api_updates'),
+        ("councils", "0006_ec_api_updates"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='DataQuality',
+            name="DataQuality",
             fields=[
-                ('council', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, primary_key=True, serialize=False, to='councils.Council')),
-                ('report', models.TextField(blank=True)),
-                ('num_stations', models.IntegerField(default=0)),
-                ('num_districts', models.IntegerField(default=0)),
-                ('num_addresses', models.IntegerField(default=0)),
+                (
+                    "council",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        primary_key=True,
+                        serialize=False,
+                        to="councils.Council",
+                    ),
+                ),
+                ("report", models.TextField(blank=True)),
+                ("num_stations", models.IntegerField(default=0)),
+                ("num_districts", models.IntegerField(default=0)),
+                ("num_addresses", models.IntegerField(default=0)),
             ],
-            options={
-                'verbose_name_plural': 'Data Quality',
-            },
+            options={"verbose_name_plural": "Data Quality",},
         ),
     ]

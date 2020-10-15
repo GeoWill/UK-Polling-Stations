@@ -72,16 +72,17 @@ class AssignPollingStationsMixin(metaclass=abc.ABCMeta):
             uprns_in_council.filter(uprn__in=uprns).update(
                 polling_station_id=polling_station_id
             )
-            if self.__class__.__name__ == 'DistrictSet':
+            if self.__class__.__name__ == "DistrictSet":
                 # We have to do this in case there are two districts which overlap
                 # and an address falls within that overlapping area.
                 duplicates = [u for u in uprns if u in seen]
-                uprns_in_council.filter(uprn__in=duplicates).update(polling_station_id="")
+                uprns_in_council.filter(uprn__in=duplicates).update(
+                    polling_station_id=""
+                )
                 seen.update(uprns)
 
 
 class DistrictSet(CustomSet, AssignPollingStationsMixin):
-
     def build_namedtuple(self, element):
 
         # MultiPolygon is mutable, so we must serialize it to store in a tuple

@@ -4,14 +4,16 @@ from addressbase.models import UprnToCouncil
 from councils.models import Council
 from data_importers.data_types import AssignPollingStationsMixin
 
+
 class MockCollection(AssignPollingStationsMixin):
     def __init__(self):
         self.elements = []
 
     def get_polling_station_lookup(self):
         return {
-            "1": {"001", },
+            "1": {"001",},
         }
+
 
 class AssignPollingStationsMixinTest(TestCase):
     def setUp(self):
@@ -26,5 +28,5 @@ class AssignPollingStationsMixinTest(TestCase):
         mock_collection.elements = [{"council": Council.objects.get(pk="X01000000")}]
         mock_collection.update_uprn_to_council_model()
 
-        self.assertEqual(UprnToCouncil.objects.get(pk="001").polling_station_id,"1")
-        self.assertEqual(UprnToCouncil.objects.get(pk="002").polling_station_id,"")
+        self.assertEqual(UprnToCouncil.objects.get(pk="001").polling_station_id, "1")
+        self.assertEqual(UprnToCouncil.objects.get(pk="002").polling_station_id, "")

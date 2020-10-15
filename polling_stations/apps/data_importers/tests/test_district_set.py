@@ -85,13 +85,17 @@ class DistrictSetTest(TestCase):
         polling_districts = [
             {
                 "polling_station_id": "01",
-                "area": MultiPolygon(Polygon(((0, 0), (0, 3), (1.25, 3), (1.25, 0), (0, 0)))),
+                "area": MultiPolygon(
+                    Polygon(((0, 0), (0, 3), (1.25, 3), (1.25, 0), (0, 0)))
+                ),
                 "council": Council.objects.get(pk="X01000001"),
                 "internal_council_id": "A",
             },
             {
                 "polling_station_id": "02",
-                "area": MultiPolygon(Polygon(((0.75, 1), (0.75, 4), (2, 4), (2, 1), (0.75, 1)))),
+                "area": MultiPolygon(
+                    Polygon(((0.75, 1), (0.75, 4), (2, 4), (2, 1), (0.75, 1)))
+                ),
                 "council": Council.objects.get(pk="X01000001"),
                 "internal_council_id": "B",
             },
@@ -123,7 +127,6 @@ class DistrictSetTest(TestCase):
         expected = {"01": {"1", "2"}, "02": {"2", "3"}}
 
         self.assertEqual(district_set.get_polling_station_lookup(), expected)
-
 
     def test_get_polling_station_lookup_uprn_on_district_boundaries(self):
         """
@@ -203,13 +206,17 @@ class DistrictSetTest(TestCase):
         polling_districts = [
             {
                 "polling_station_id": "01",
-                "area": MultiPolygon(Polygon(((0, 0), (0, 3), (1.25, 3), (1.25, 0), (0, 0)))),
+                "area": MultiPolygon(
+                    Polygon(((0, 0), (0, 3), (1.25, 3), (1.25, 0), (0, 0)))
+                ),
                 "council": Council.objects.get(pk="X01000001"),
                 "internal_council_id": "A",
             },
             {
                 "polling_station_id": "02",
-                "area": MultiPolygon(Polygon(((0.75, 1), (0.75, 4), (2, 4), (2, 1), (0.75, 1)))),
+                "area": MultiPolygon(
+                    Polygon(((0.75, 1), (0.75, 4), (2, 4), (2, 1), (0.75, 1)))
+                ),
                 "council": Council.objects.get(pk="X01000001"),
                 "internal_council_id": "B",
             },
@@ -233,7 +240,14 @@ class DistrictSetTest(TestCase):
         district_set = DistrictSet()
         for element in polling_districts:
             district_set.add(element)
-        district_set.update_uprn_to_council_model(polling_station_lookup=polling_station_lookup)
-        updated_uprns = UprnToCouncil.objects.all().order_by('uprn').values_list('uprn', 'polling_station_id')
-        self.assertListEqual(list(updated_uprns),
-                             [('1', '01'), ('2', ''), ('3', '02'), ('4', '')])
+        district_set.update_uprn_to_council_model(
+            polling_station_lookup=polling_station_lookup
+        )
+        updated_uprns = (
+            UprnToCouncil.objects.all()
+            .order_by("uprn")
+            .values_list("uprn", "polling_station_id")
+        )
+        self.assertListEqual(
+            list(updated_uprns), [("1", "01"), ("2", ""), ("3", "02"), ("4", "")]
+        )
