@@ -8,13 +8,14 @@ import logging
 import os
 
 from django.apps import apps
+from django.contrib.gis import geos
 from django.core.management.base import BaseCommand
 from django.conf import settings
-from django.contrib.gis.geos import Point, GEOSGeometry
+from django.contrib.gis.geos import Point, GEOSGeometry, GEOSException
 
 from addressbase.models import UprnToCouncil
 from councils.models import Council
-from data_importers.data_types import AddressList, StationSet
+from data_importers.data_types import AddressList, DistrictSet, StationSet
 from data_importers.data_quality_report import (
     DataQualityReportBuilder,
     StationReport,
@@ -35,6 +36,13 @@ class CsvMixin:
 
     def get_csv_options(self):
         return {"csv_encoding": self.csv_encoding, "csv_delimiter": self.csv_delimiter}
+
+
+class ShpMixin:
+    shp_encoding = "utf-8"
+
+    def get_shp_options(self):
+        return {"shp_encoding": self.shp_encoding}
 
 
 class BaseImporter(BaseCommand, metaclass=abc.ABCMeta):
@@ -84,7 +92,7 @@ class BaseImporter(BaseCommand, metaclass=abc.ABCMeta):
         UprnToCouncil.objects.filter(lad=council).update(polling_station_id="")
 
     def get_council(self, council_id):
-        return Council.objects.get(identifiers__contains=[council_id])
+        return Council.objects.get(pk=council_id)
 
     def get_data(self, filetype, filename):
         options = {}
@@ -357,6 +365,131 @@ class BaseStationsImporter(BaseImporter, metaclass=abc.ABCMeta):
         self.stations.add(station_info)
 
 
+class BaseDistrictsImporter(BaseImporter, metaclass=abc.ABCMeta):
+    imports_districts = True
+
+    districts = None
+    districts_srid = None
+
+    @property
+    @abc.abstractmethod
+    def districts_filetype(self):
+        pass
+
+    @property
+    @abc.abstractmethod
+    def districts_name(self):
+        pass
+
+    def get_districts(self):
+        districts_file = os.path.join(self.base_folder_path, self.districts_name)
+        return self.get_data(self.districts_filetype, districts_file)
+
+    def clean_poly(self, poly):
+        if isinstance(poly, geos.Polygon):
+            poly = geos.MultiPolygon(poly, srid=self.get_srid("districts"))
+            return poly
+        return poly
+
+    def strip_z_values(self, geojson):
+        districts = json.loads(geojson)
+        districts["type"] = "Polygon"
+        for points in districts["coordinates"][0][0]:
+            if len(points) == 3:
+                points.pop()
+        districts["coordinates"] = districts["coordinates"][0]
+        return json.dumps(districts)
+
+    @abc.abstractmethod
+    def district_record_to_dict(self, record):
+        pass
+
+    def check_district_overlap(self, district_record):
+        if self.council.area.contains(district_record["area"]):
+            self.logger.log_message(
+                logging.INFO,
+                "District %s is fully contained by target local auth",
+                variable=district_record["internal_council_id"],
+            )
+            return 100
+
+        try:
+            intersection = self.council.area.intersection(
+                district_record["area"].transform(4326, clone=True)
+            )
+            district_area = district_record["area"].transform(27700, clone=True).area
+            intersection_area = intersection.transform(27700, clone=True).area
+        except GEOSException as e:
+            self.logger.log_message(logging.ERROR, str(e))
+            return
+
+        overlap_percentage = (intersection_area / district_area) * 100
+        if overlap_percentage > 99:
+            # meh - close enough
+            level = logging.INFO
+        else:
+            level = logging.WARNING
+
+        self.logger.log_message(
+            level,
+            "District {0} is {1:.2f}% contained by target local auth".format(
+                district_record["internal_council_id"], overlap_percentage
+            ),
+        )
+
+        return overlap_percentage
+
+    def import_polling_districts(self):
+        districts = self.get_districts()
+        self.write_info("Districts: Found %i features in input file" % (len(districts)))
+        for district in districts:
+            if self.districts_filetype in ["shp", "shp.zip"]:
+                district_info = self.district_record_to_dict(district.record)
+            else:
+                district_info = self.district_record_to_dict(district)
+
+            """
+            district_record_to_dict() may optionally return None
+            if we want to exclude a particular district record
+            from being imported
+            """
+            if district_info is None:
+                self.logger.log_message(
+                    logging.INFO,
+                    "district_record_to_dict() returned None with input:\n%s",
+                    variable=district,
+                    pretty=True,
+                )
+                continue
+
+            if "council" not in district_info:
+                district_info["council"] = self.council
+
+            """
+            If the file type is shp or geojson, we can usually derive
+            'area' automatically, but we can return it if necessary.
+            For other file types, we must return the key
+            'area' from address_record_to_dict()
+            """
+            if self.districts_filetype in ["shp", "shp.zip"]:
+                geojson = json.dumps(district.shape.__geo_interface__)
+            if self.districts_filetype == "geojson":
+                geojson = json.dumps(district["geometry"])
+            if "area" not in district_info and (
+                self.districts_filetype in ["shp", "shp.zip", "geojson"]
+            ):
+                poly = self.clean_poly(GEOSGeometry(geojson))
+                poly.srid = self.get_srid("districts")
+                district_info["area"] = poly
+
+            if self.validation_checks:
+                self.check_district_overlap(district_info)
+            self.add_polling_district(district_info)
+
+    def add_polling_district(self, district_info):
+        self.districts.add(district_info)
+
+
 class BaseAddressesImporter(BaseImporter, metaclass=abc.ABCMeta):
 
     addresses = None
@@ -433,6 +566,27 @@ class BaseAddressesImporter(BaseImporter, metaclass=abc.ABCMeta):
         self.addresses.append(address_info)
 
 
+class BaseStationsDistrictsImporter(BaseStationsImporter, BaseDistrictsImporter):
+    def pre_import(self):
+        raise NotImplementedError
+
+    def import_data(self):
+
+        # Optional step for pre import tasks
+        try:
+            self.pre_import()
+        except NotImplementedError:
+            pass
+
+        self.stations = StationSet()
+        self.districts = DistrictSet()
+        self.import_polling_districts()
+        self.import_polling_stations()
+        self.districts.save()
+        self.districts.update_uprn_to_council_model()
+        self.stations.save()
+
+
 class BaseStationsAddressesImporter(BaseStationsImporter, BaseAddressesImporter):
     def pre_import(self):
         raise NotImplementedError
@@ -463,3 +617,44 @@ class BaseCsvStationsCsvAddressesImporter(BaseStationsAddressesImporter, CsvMixi
     stations_filetype = "csv"
     addresses_filetype = "csv"
 
+
+class BaseShpStationsShpDistrictsImporter(BaseStationsDistrictsImporter, ShpMixin):
+    """
+    Stations in SHP format
+    Districts in SHP format
+    """
+
+    stations_filetype = "shp"
+    districts_filetype = "shp"
+
+
+class BaseCsvStationsJsonDistrictsImporter(BaseStationsDistrictsImporter, CsvMixin):
+    """
+    Stations in CSV format
+    Districts in GeoJSON format
+    """
+
+    stations_filetype = "csv"
+    districts_filetype = "geojson"
+
+
+class BaseCsvStationsKmlDistrictsImporter(BaseStationsDistrictsImporter, CsvMixin):
+    """
+    Stations in CSV format
+    Districts in KML format
+    """
+
+    districts_srid = 4326
+    stations_filetype = "csv"
+    districts_filetype = "kml"
+
+    # this is mainly here for legacy compatibility
+    # mostly we should override this
+    def district_record_to_dict(self, record):
+        geojson = self.strip_z_values(record.geom.geojson)
+        poly = self.clean_poly(GEOSGeometry(geojson, srid=self.get_srid("districts")))
+        return {
+            "internal_council_id": record["Name"].value,
+            "name": record["Name"].value,
+            "area": poly,
+        }
