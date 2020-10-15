@@ -3,7 +3,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.contrib.gis.geos import Point
 from rest_framework.test import APIRequestFactory
 from rest_framework.views import APIView
-from api.address import ResidentialAddressViewSet
+from api.address import AddressViewSet
 from .mocks import EEMockWithElection, EEMockWithoutElection
 
 
@@ -24,16 +24,12 @@ class AddressTest(TestCase):
         self.request = factory.get("/foo", format="json")
         self.request.user = AnonymousUser()
         self.request = APIView().initialize_request(self.request)
-        self.endpoint = ResidentialAddressViewSet()
+        self.endpoint = AddressViewSet()
         self.endpoint.get_ee_wrapper = lambda x: EEMockWithElection()
 
     def test_station_found(self):
         response = self.endpoint.retrieve(
-            self.request,
-            "1-foo-street-bar-town",
-            "json",
-            geocoder=mock_geocode,
-            log=False,
+            self.request, "200", "json", geocoder=mock_geocode, log=False,
         )
 
         self.assertEqual(200, response.status_code)
@@ -49,11 +45,7 @@ class AddressTest(TestCase):
     def test_station_found_but_no_election(self):
         self.endpoint.get_ee_wrapper = lambda x: EEMockWithoutElection()
         response = self.endpoint.retrieve(
-            self.request,
-            "1-foo-street-bar-town",
-            "json",
-            geocoder=mock_geocode,
-            log=False,
+            self.request, "200", "json", geocoder=mock_geocode, log=False,
         )
 
         self.assertEqual(200, response.status_code)
@@ -65,11 +57,7 @@ class AddressTest(TestCase):
 
     def test_station_not_found(self):
         response = self.endpoint.retrieve(
-            self.request,
-            "3-foo-street-bar-town",
-            "json",
-            geocoder=mock_geocode,
-            log=False,
+            self.request, "202", "json", geocoder=mock_geocode, log=False,
         )
 
         self.assertEqual(200, response.status_code)
@@ -82,11 +70,7 @@ class AddressTest(TestCase):
     def test_bad_slug(self):
         # this address is not in our fixture
         response = self.endpoint.retrieve(
-            self.request,
-            "4-foo-street-bar-town",
-            "json",
-            geocoder=mock_geocode,
-            log=False,
+            self.request, "205", "json", geocoder=mock_geocode, log=False,
         )
 
         self.assertEqual(404, response.status_code)
