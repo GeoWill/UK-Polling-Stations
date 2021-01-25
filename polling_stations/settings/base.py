@@ -301,3 +301,9 @@ if DEBUG:
 # importing test settings file if necessary (TODO chould be done better)
 if len(sys.argv) > 1 and sys.argv[1] in ["test", "harvest"]:
     from .testing import *  # noqa
+
+def is_ci():
+    return os.environ.get("CIRCLECI")
+
+if is_ci:
+    from .ci import *  # noqa
