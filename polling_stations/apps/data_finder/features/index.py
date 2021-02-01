@@ -13,6 +13,7 @@ import aloe_webdriver.django  # noqa
 from selenium.webdriver import Chrome, ChromeOptions
 import vcr
 
+from councils.tests.factories import CouncilFactory
 
 selenium_vcr = vcr.VCR()
 # We need to ignore localhost as selenium communicates over local http
@@ -45,8 +46,20 @@ def setup(scenario, outline, steps):
     world.browser.set_page_load_timeout(10)
     world.browser.set_script_timeout(10)
 
+    CouncilFactory(
+        **{
+            "council_id": "NWP",
+            "electoral_services_address": "Newport City Council\nCivic Centre\nNewport\nSouth Wales",
+            "electoral_services_email": "uvote@newport.gov.uk",
+            "electoral_services_phone_numbers": ["01633 656656"],
+            "electoral_services_postcode": "NP20 4UR",
+            "electoral_services_website": "http://www.newport.gov.uk/_dc/index.cfm?fuseaction=electoral.homepage",
+            "name": "Newport Council",
+            "identifiers": ["W06000022"],
+        }
+    )
     with open(os.devnull, "w") as f:
-        call_command("loaddata", "newport_council.json", stdout=f)
+        # call_command("loaddata", "newport_council.json", stdout=f)
         call_command("loaddata", "integration_tests_addressbase.json", stdout=f)
 
 
