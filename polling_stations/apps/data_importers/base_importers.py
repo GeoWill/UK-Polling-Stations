@@ -407,7 +407,7 @@ class BaseDistrictsImporter(BaseImporter, metaclass=abc.ABCMeta):
         pass
 
     def check_district_overlap(self, district_record):
-        if self.council.area.contains(district_record["area"]):
+        if self.council.geography.geography.contains(district_record["area"]):
             self.logger.log_message(
                 logging.INFO,
                 "District %s is fully contained by target local auth",
@@ -416,7 +416,7 @@ class BaseDistrictsImporter(BaseImporter, metaclass=abc.ABCMeta):
             return 100
 
         try:
-            intersection = self.council.area.intersection(
+            intersection = self.council.geography.geography.intersection(
                 district_record["area"].transform(4326, clone=True)
             )
             district_area = district_record["area"].transform(27700, clone=True).area
@@ -520,7 +520,7 @@ class BaseAddressesImporter(BaseImporter, metaclass=abc.ABCMeta):
         self.write_info("Contextual Data:")
         self.write_info(
             "Total UPRNs in AddressBase: {:,}".format(
-                dwellings.from_addressbase(self.council.area)
+                dwellings.from_addressbase(self.council.geography.geography)
             )
         )
         self.write_info(
