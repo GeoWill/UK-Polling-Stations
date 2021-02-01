@@ -233,7 +233,9 @@ class BaseStationsImporter(BaseImporter, metaclass=abc.ABCMeta):
     def check_station_point(self, station_record):
         if station_record["location"]:
             try:
-                council = Council.objects.get(area__covers=station_record["location"])
+                council = Council.objects.get(
+                    geography__geography__covers=station_record["location"]
+                )
                 if self.council_id not in council.identifiers:
                     self.logger.log_message(
                         logging.WARNING,
