@@ -1,3 +1,4 @@
+import datetime
 import json
 import operator
 from functools import reduce
@@ -186,6 +187,54 @@ class PollingStationDetailView(DetailView):
     queryset = PollingStation.objects.all()
 
     def get_object(self, queryset=None):
+
         return self.queryset.get(
             council_id=self.kwargs["council_pk"], internal_council_id=self.kwargs["id"]
+        )
+
+
+class PollingStationGeoJSONView(View):
+    def get(self, request, council_pk, id):
+        gss_code = Council.objects.get(council_id=council_pk).geography.gss
+        addresses = Address.objects.filter(
+            uprntocouncil__polling_station_id=id, uprntocouncil__lad=gss_code
+        )
+        station = PollingStation.objects.get(
+            internal_council_id=id, council_id=council_pk
+        )
+        return JsonResponse(
+            {
+                "type": "FeatureCollection",
+                "features": [
+                    {
+                        "type": "Feature",
+                        "geometry": json.loads(address.location.geojson)
+                        if address.location
+                        else None,
+                        "properties": {
+                            "type": "residentialaddress",
+                            "address": address.address,
+                            "uprn": address.uprn,
+                            "polling_station_id": address.polling_station_id,
+                            "url": reverse("address_view", args=(address.uprn,)),
+                        },
+                    }
+                    for address in addresses
+                ]
+                + [
+                    {
+                        "type": "Feature",
+                        "geometry": json.loads(station.location.geojson)
+                        if station.location
+                        else None,
+                        "properties": {
+                            "type": "pollingstation",
+                            "council_id": station.council_id,
+                            "internal_council_id": station.internal_council_id,
+                            "address": station.address,
+                        },
+                    }
+                ],
+            },
+            content_type="application/geo+json",
         )

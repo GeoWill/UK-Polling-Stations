@@ -32,7 +32,7 @@
             map = L.map('area_map', {
                 layers: [tiles]
             });
-            fetch('{% url "dashboard:postcode-geojson" postcode %}').then((response) => {
+            fetch('{% url "dashboard:pollingstation-geojson" postcode %}').then((response) => {
                 response.json().then((json) => {
                     layer = L.geoJSON(json, {
                         pointToLayer: (feature, latlng) => {

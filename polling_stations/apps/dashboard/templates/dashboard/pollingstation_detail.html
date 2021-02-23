@@ -1,11 +1,96 @@
 {% extends "base.html" %}
 {% load i18n %}
-{% load humanize %}
+{% load pipeline %}
 
 {% block page_title %}{{ pollingstation.address }}{% endblock page_title %}
 
+{% block extra_page_css %}
+    {% stylesheet 'map' %}
+    {% stylesheet 'dashboard' %}
+{% endblock extra_page_css %}
+
+{% block extra_javascript %}
+    {% javascript 'map' %}
+    {% javascript 'dashboard' %}
+{% endblock extra_javascript %}
+
+
+
+
+{% block in_page_javascript %}
+    <script type="text/javascript">
+        (function() {
+
+            var typeIcons = {
+                'pollingstation': 'fa-check-square',
+                'residentialaddress': 'fa-home'
+            };
+
+            tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: 'Map data ⓒ <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+                subdomains: 'abc'
+            });
+
+            map = L.map('area_map', {
+                layers: [tiles],
+                preferCanvas: true
+            });
+            fetch('{% url "dashboard:pollingstation-geojson" object.council_id object.internal_council_id %}').then((response) => {
+                response.json().then((json) => {
+                    layer = L.geoJSON(json, {
+                        pointToLayer: (feature, latlng) => {
+                            var popup = document.createElement("div");
+                            popup.appendChild(document.createElement("p")).textContent = feature.properties.address;
+                            if (feature.properties.uprn) {
+                                popup.appendChild(document.createElement("p")).textContent = "uprn: " + feature.properties.uprn;
+                            }
+                            if (feature.properties.polling_station_id) {
+                                popup.appendChild(document.createElement("p")).textContent = "Station: " + feature.properties.polling_station_id;
+                            }
+                            if (feature.properties.internal_council_id) {
+                                popup.appendChild(document.createElement("p")).textContent = "ID: " + feature.properties.internal_council_id;
+                            }
+                            var viewLink = popup.appendChild(document.createElement("a"));
+                            viewLink.textContent = "View";
+                            viewLink.setAttribute("href", feature.properties.url);
+                            if (feature.properties.internal_council_id) {
+                                return L.marker(
+                                    latlng,
+                                    (latlng, {
+                                        icon: L.ExtraMarkers.icon(
+                                            {
+                                                icon: typeIcons[feature.properties.type] || 'fa-question',
+                                                markerColor: 'red',
+                                                iconColor: 'white',
+                                                shape: 'circle',
+                                                prefix: 'fa'
+                                            }
+                                        )
+                                    })
+                                ).bindPopup(popup)
+                            }
+                            else {
+                                return L.circleMarker(latlng, {radius: 2}).bindPopup(popup)
+                            }
+                        },
+                    });
+
+                    map.addLayer(layer);
+                    map.fitBounds(layer.getBounds(), {padding: [30, 30]});
+                })
+            });
+        })();
+    </script>
+{% endblock in_page_javascript %}
+
+
 {% block content %}
     <h1>{{ pollingstation.address }}</h1>
+
+
+    <div id="area_map" class="card">
+
+    </div>
 
     <p><a href="{% url "dashboard:council_detail" pollingstation.council_id %}">{{ pollingstation.council }}</a></p>
 

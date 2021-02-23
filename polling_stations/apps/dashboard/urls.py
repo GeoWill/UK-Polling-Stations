@@ -17,6 +17,11 @@ urlpatterns = [
         name="pollingstation_detail",
     ),
     url(
+        r"council/(?P<council_pk>[^/]+)/polling-station/(?P<id>.+).geojson$",
+        views.PollingStationGeoJSONView.as_view(),
+        name="pollingstation-geojson",
+    ),
+    url(
         r"postcode/(?P<postcode>[^/]+)/$", views.PostCodeView.as_view(), name="postcode"
     ),
     url(
