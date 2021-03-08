@@ -15,30 +15,36 @@ class Command(BaseXpressDCCsvInconsistentPostcodesImporter):
     csv_delimiter = ","
 
     def station_record_to_dict(self, record):
-        if (
-            record.polling_place_id == "4816"
-        ):  # Rosewood Primary School Moorland Road Entrance Burnley
+
+        # Rosewood Primary School Moorland Road Entrance Burnley
+        if record.polling_place_id == "4816":
             record = record._replace(polling_place_postcode="BB11 2PH")
+            record = record._replace(polling_place_easting=383468)
+            record = record._replace(polling_place_northing=431243)
 
-        if (
-            record.polling_place_id == "4804"
-        ):  # St Matthews Church Hall Albion Street Burnley
+        # St Matthews Church Hall Albion Street Burnley
+        if record.polling_place_id == "4804":
             record = record._replace(polling_place_postcode="BB11 4JJ")
+            record = record._replace(polling_place_easting=383312)
+            record = record._replace(polling_place_northing=431998)
 
-        if (
-            record.polling_place_id == "4839"
-        ):  # Dorset Street Entrance Rosegrove Infants School Dorset Street Burnley
+        # Dorset Street Entrance Rosegrove Infants School Dorset Street Burnley
+        if record.polling_place_id == "4839":
             record = record._replace(polling_place_postcode="BB12 6HW")
+            record = record._replace(polling_place_easting=381471)
+            record = record._replace(polling_place_northing=432575)
 
-        if (
-            record.polling_place_id == "4776"
-        ):  # Burnley Football Club 1882 Lounge Harry Potts Way Burnley
+        # Burnley Football Club 1882 Lounge Harry Potts Way Burnley
+        if record.polling_place_id == "4776":
             record = record._replace(polling_place_postcode="BB10 4BX")
 
-        if (
-            record.polling_place_id == "4737"
-        ):  # St Cuthbert`s Community Hall Sharp Street Burnley BB10 1UG
+        # St Cuthbert`s Community Hall Sharp Street Burnley BB10 1UG
+        if record.polling_place_id == "4737":
             record = record._replace(polling_place_postcode="BB10 1UJ")
+
+        # Middlesex Over 50s Social Centre, Middlesex Avenue, Burnley
+        if record.polling_place_id == "4867":
+            record = record._replace(polling_place_postcode="BB12 6AA")
 
         return super().station_record_to_dict(record)
 
