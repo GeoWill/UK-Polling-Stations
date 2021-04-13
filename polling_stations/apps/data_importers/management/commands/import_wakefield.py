@@ -34,19 +34,31 @@ class Command(BaseDemocracyCountsCsvImporter):
         return super().address_record_to_dict(record)
 
     def station_record_to_dict(self, record):
+        # Council sent through various amendments:
         if record.stationcode == "12NF":
             record = record._replace(placename="Kings Croft")
 
         if record.stationcode == "15MG":
-            record = record._replace(placename="Temporary Polling Station")
             record = record._replace(
-                add1="Land Opposite Lofthouse Gate Working Men's Club"
+                placename="Temporary Polling Station",
+                add1="Land Opposite Lofthouse Gate Working Men's Club",
+                add2="Canal Lane",
+                add3="Lofthouse Gate",
+                add4="Wakefield",
+                postcode="WF3 3HN",
+                xordinate="433449",
+                yordinate="424608",
             )
-            record = record._replace(add2="Canal Lane")
-            record = record._replace(add3="Lofthouse Gate")
-            record = record._replace(add4="Wakefield")
-            record = record._replace(postcode="WF3 3HN")
-            record = record._replace(xordinate="433449")
-            record = record._replace(yordinate="424608")
+        if record.stationcode == "03NE":
+            record = record._replace(
+                placename="Ackton Pastures Primary",
+                add1="College Grove",
+                add2="Whitwood",
+                add3="Castleford",
+                add4="",
+                postcode="WF10 5NS",
+                xordinate="441485",
+                yordinate="424563",
+            )
 
         return super().station_record_to_dict(record)
