@@ -22,7 +22,7 @@
                 attribution: 'Map data ⓒ <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
                 subdomains: 'abc'
             });
-            map = L.map('mre_map', {
+            map = L.map('area_map', {
                 layers: [tiles]
             });
             map.setView([51.505, -0.09], 13);
@@ -33,7 +33,7 @@
 
 {% block content %}
     <h1>Minimum Reproducible Example Map</h1>
-    <div id="mre_map" class="ds-image-card">
+    <div id="area_map" class="ds-image-card">
     </div>
 
 {% endblock content %}
