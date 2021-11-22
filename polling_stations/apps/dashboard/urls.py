@@ -24,4 +24,5 @@ urlpatterns = [
         views.PostCodeGeoJSONView.as_view(),
         name="postcode-geojson",
     ),
+    re_path(r"mre/$", views.MREMapView.as_view(), name="mre_map"),
 ]

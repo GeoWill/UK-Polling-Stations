@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load pipeline %}
+
+{% block page_title %}Coverage Map{% endblock page_title %}
+
+{% block extra_page_css %}
+    {% stylesheet 'map' %}
+    {% stylesheet 'dashboard' %}
+{% endblock extra_page_css %}
+
+{% block extra_javascript %}
+    {% javascript 'map' %}
+    {% javascript 'dashboard' %}
+{% endblock extra_javascript %}
+
+{% block in_page_javascript %}
+    <script type="text/javascript">
+        (function() {
+
+            tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: 'Map data ⓒ <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+                subdomains: 'abc'
+            });
+            map = L.map('mre_map', {
+                layers: [tiles]
+            });
+            map.setView([51.505, -0.09], 13);
+        })();
+    </script>
+{% endblock in_page_javascript %}
+
+
+{% block content %}
+    <h1>Minimum Reproducible Example Map</h1>
+    <div id="mre_map" class="ds-image-card">
+    </div>
+
+{% endblock content %}

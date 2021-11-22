@@ -21,6 +21,10 @@ class IndexView(ListView):
     template_name = "dashboard/council_list.html"
 
 
+class MREMapView(TemplateView):
+    template_name = "dashboard/mre_map.html"
+
+
 class CouncilDetailView(DetailView):
     queryset = Council.objects.all()
     template_name = "dashboard/council_detail.html"
