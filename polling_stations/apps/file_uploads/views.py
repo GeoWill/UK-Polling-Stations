@@ -193,12 +193,13 @@ class CouncilView:
         return qs
 
     def get_context_data(self, **kwargs):
-
         context = super().get_context_data(**kwargs)
-        upcoming_election_dates = EveryElectionWrapper(
-            council_id=self.kwargs["pk"]
-        ).get_future_election_dates()
-        context["HAS_UPCOMING_ELECTIONS"] = bool(upcoming_election_dates)
+        if self.kwargs.get("pk"):
+            upcoming_election_dates = EveryElectionWrapper(
+                council_id=self.kwargs["pk"]
+            ).get_future_election_dates()
+            context["HAS_UPCOMING_ELECTIONS"] = bool(upcoming_election_dates)
+            context["NO_COUNCILS"] = False
         return context
 
 
