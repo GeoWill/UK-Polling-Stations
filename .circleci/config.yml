@@ -5,7 +5,7 @@ orbs:
   node: circleci/node@5.0.2
 
 jobs:
-  build:
+  build_and_test:
     docker:
       - image: cimg/python:3.10.8-browsers
         environment:
@@ -22,7 +22,7 @@ jobs:
       - checkout
 
       - restore_cache:
-          key: v2-polling_stations-dependencies-{{ checksum "requirements/base.txt" }}-{{ checksum "requirements/testing.txt" }}
+          key: v3-polling_stations-dependencies-{{ checksum "requirements/base.txt" }}-{{ checksum "requirements/testing.txt" }}-{{ checksum "requirements/cdk.txt" }}
 
       - node/install:
           node-version: '10.19.0'
@@ -34,9 +34,10 @@ jobs:
           override-ci-command: npm install
 
       - run:
-          name: install dependencies
+          name: install app dependencies
           command: |
             sudo apt update && sudo apt install -y gdal-bin
+            pyenv local $(ls ~/.pyenv/versions/)
             python -m venv .venv
             . .venv/bin/activate
             pip install --upgrade pip
@@ -45,12 +46,18 @@ jobs:
             pip install -r requirements/testing.txt
             playwright install
 
+      - run:
+          name: install CDK Python dependencies
+          command: |
+            . .venv/bin/activate
+            pip install -r requirements/cdk.txt
+
       - save_cache:
           paths:
             - ./.venv
             - ./node_modules
             - ./home/circleci/.cache
-          key: v2-polling_stations-dependencies-{{ checksum "requirements/base.txt" }}-{{ checksum "requirements/testing.txt" }}
+          key: v3-polling_stations-dependencies-{{ checksum "requirements/base.txt" }}-{{ checksum "requirements/testing.txt" }}-{{ checksum "requirements/cdk.txt" }}
 
       - run:
           name: Install HTML Tidy
@@ -84,3 +91,148 @@ jobs:
           command: |
             . .venv/bin/activate
             coveralls
+
+
+  cdk_synth:
+    machine:
+      image: ubuntu-2204:2022.10.2
+    working_directory: ~/repo
+    paramters:
+      dc-environment:
+        type: enum
+        enum: [ development, staging, production ]
+    environment:
+      DC_ENVIRONMENT: "<<parameters.dc-environment>>"
+
+    steps:
+    - checkout
+    - restore_cache:
+        key: v3-machine-dependencies-{{ checksum "requirements/base.txt" }}-{{ checksum "requirements/testing.txt" }}-{{ checksum "requirements/cdk.txt" }}
+    - run:
+        name: Install CDK Python dependencies
+        command: |
+          pyenv local $(ls ~/.pyenv/versions/)
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -r requirements/cdk.txt
+    - save_cache:
+        paths:
+          - ./.venv
+          - ./node_modules
+        key: v3-machine-dependencies-{{ checksum "requirements/base.txt" }}-{{ checksum "requirements/testing.txt" }}-{{ checksum "requirements/cdk.txt" }}
+    - run:
+        name: CDK version
+        command: |
+          npx cdk --version
+    - run:
+        name: CDK synth
+        command: |
+          . .venv/bin/activate
+          npx cdk synth --all
+    - persist_to_workspace:
+        root: ~/repo/
+        paths: [ cdk.out ]
+
+
+  cdk_deploy:
+    machine:
+      image: ubuntu-2204:2022.10.2
+    working_directory: ~/repo
+    parameters:
+      dc-environment:
+        type: enum
+        enum: [ development, staging, production ]
+    environment:
+      DC_ENVIRONMENT: "<<parameters.dc-environment>>"
+    steps:
+    - checkout
+    - restore_cache:
+        key: v3-machine-dependencies-{{ checksum "requirements/base.txt" }}-{{ checksum "requirements/testing.txt" }}-{{ checksum "requirements/cdk.txt" }}
+    - run:
+        name: CDK deploy
+        command: |
+          pyenv local $(ls -1 /opt/circleci/.pyenv/versions | grep 3.10)
+          . .venv/bin/activate
+          npx cdk deploy --all --require-approval never --concurrency 3
+    - save_cache:
+        paths:
+        - .cdk.out
+        key: v3-machine-dependencies-{{ checksum "requirements/base.txt" }}-{{ checksum "requirements/testing.txt" }}-{{ checksum "requirements/cdk.txt" }}
+
+  code_deploy:
+    docker:
+      - image: cimg/python:3.10.7-node
+        environment:
+          CIRCLECI: true
+          PGHOST: 127.0.0.1
+    working_directory: ~/repo
+    parameters:
+      dc-environment:
+        type: enum
+        enum: [ development, staging, production ]
+    environment:
+      DC_ENVIRONMENT: "<<parameters.dc-environment>>"
+
+    steps:
+    - checkout
+    - restore_cache:
+        key: v3-dependencies-{{ checksum "requirements/base.txt" }}-{{ checksum "requirements/testing.txt" }}-{{ checksum "requirements/cdk.txt" }}
+    - run:
+        name: "Code Deploy: Create deployment group"
+        command: |
+          pyenv local $(ls ~/.pyenv/versions/)
+          . .venv/bin/activate
+          python deployscripts/create_deployment_group.py
+    - run:
+        name: "Code Deploy: Create deployment"
+        command: |
+          . .venv/bin/activate
+          COMMIT_SHA=$CIRCLE_SHA1 python deployscripts/create_deployment.py
+workflows:
+  version: 2
+  test_build_deploy:
+    jobs:
+    - build_and_test
+    - cdk_synth:
+        name: "CDK Synth"
+        requires:
+        - build_and_test
+        context: [deployment-development-ee]
+        dc-environment: development
+    - cdk_deploy:
+        name: "Development: CDK Deploy"
+        requires:
+        - "CDK Synth"
+        context: [deployment-development-ee]
+        dc-environment: development
+    - code_deploy:
+        name: "Development: AWS CodeDeploy"
+        requires:
+        - "Development: CDK Deploy"
+        context: [deployment-development-ee]
+        dc-environment: development
+    - cdk_deploy:
+        name: "Staging: CDK Deploy"
+        requires:
+        - "CDK Synth"
+        context: [deployment-staging-ee]
+        dc-environment: staging
+    - code_deploy:
+        name: "Staging: AWS CodeDeploy"
+        requires:
+        - "Staging: CDK Deploy"
+        context: [deployment-staging-ee]
+        dc-environment: staging
+    - cdk_deploy:
+        name: "Production: CDK Deploy"
+        requires:
+        - "CDK Synth"
+        - "Staging: AWS CodeDeploy"
+        context: [deployment-production-ee]
+        dc-environment: production
+    - code_deploy:
+        name: "Production: AWS CodeDeploy"
+        requires:
+        - "Production: CDK Deploy"
+        context: [deployment-production-ee]
+        dc-environment: production
