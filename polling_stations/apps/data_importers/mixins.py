@@ -77,7 +77,7 @@ class AdvanceVotingMixin(BaseBaseImporter):
             total += len(batch)
             if not batch:
                 break
-            through_model.objects.bulk_create(batch, batch_size)
+            through_model.objects.bulk_create(batch)
         return total
 
     def post_import(self):
